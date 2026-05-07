@@ -1,8 +1,9 @@
+
 FROM php:8.2-fpm
 
 WORKDIR /var/www
 
-# Установка зависимостей OS
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,22 +11,24 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libwebp-dev \
     zip \
     unzip \
     postgresql-client \
+    gnupg \
+    procps \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Установка Node.js (LTS) через скрипт установки
-# Это надежнее, чем поиск пакета в репозиториях Debian
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Установка Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Создание пользователя и права (опционально, для совместимости с хостом)
+RUN usermod -u 1000 www-data || true
 
 EXPOSE 9000
 
