@@ -2,7 +2,8 @@ FROM php:8.2-fpm
 
 WORKDIR /var/www
 
-# 1. Установка всех системных зависимостей
+# Установка системных зависимостей
+# libpq-dev нужен для pdo_pgsql, libzip-dev для zip, libicu-dev для intl
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,9 +11,8 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
-    libfreetype-dev \
-    libjpeg-dev \
-    libwebp-dev \
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
     libicu-dev \
     libpq-dev \
     zip \
@@ -22,20 +22,16 @@ RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Настройка GD
+# Настройка и установка расширений PHP
+# Разбиваем на этапы, чтобы видеть, где именно ошибка, если она повторится
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip intl
 
-# 3. Установка расширений по группам (для лучшей отладки)
-RUN docker-php-ext-install pdo_pgsql mbstring
-RUN docker-php-ext-install exif pcntl bcmath
-RUN docker-php-ext-install gd
-RUN docker-php-ext-install zip
-RUN docker-php-ext-install intl
-
-# 4. Composer
+# Установка Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 5. Права доступа
+# Создание пользователя и права (опционально, но полезно для Linux хостов)
+# Для Windows/Mac это не критично, но лучше оставить
 RUN usermod -u 1000 www-data || true
 
 EXPOSE 9000
