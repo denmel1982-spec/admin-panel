@@ -1,63 +1,51 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: admin_panel_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_DATABASE:-admin_panel}
-      POSTGRES_USER: ${DB_USERNAME:-admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    networks:
-      - admin_panel_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-admin}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # PHP FPM Service
-  php:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: admin_panel_php
+    image: admin-panel-app
+    container_name: admin-panel-app
     restart: unless-stopped
-    working_dir: /var/www/html
+    working_dir: /var/www/
     volumes:
-      - ./:/var/www/html
-    depends_on:
-      db:
-        condition: service_healthy
+      - ./:/var/www
     networks:
-      - admin_panel_network
+      - admin-panel-network
+    depends_on:
+      - db
 
-  # Nginx Web Server
   nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
-    container_name: admin_panel_nginx
+    image: nginx:alpine
+    container_name: admin-panel-nginx
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "8000:80"
     volumes:
-      - ./:/var/www/html
-    depends_on:
-      - php
+      - ./:/var/www
+      - ./docker/nginx:/etc/nginx/conf.d
     networks:
-      - admin_panel_network
+      - admin-panel-network
+    depends_on:
+      - app
+
+  db:
+    image: postgres:15-alpine
+    container_name: admin-panel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: admin_panel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - admin-panel-db-data:/var/lib/postgresql/data
+    networks:
+      - admin-panel-network
 
 networks:
-  admin_panel_network:
+  admin-panel-network:
     driver: bridge
 
 volumes:
-  postgres_data:
-    driver: local
+  admin-panel-db-data:
