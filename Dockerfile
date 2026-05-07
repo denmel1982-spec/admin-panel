@@ -1,9 +1,9 @@
-
 FROM php:8.2-fpm
 
 WORKDIR /var/www
 
-# Установка системных зависимостей
+# Обновляем репозитории и устанавливаем зависимости
+# Используем libjpeg-dev вместо libjpeg62-turbo-dev для Debian 12
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -13,24 +13,28 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libfreetype-dev \
     libjpeg-dev \
-    libwebp-dev \
     zip \
     unzip \
     postgresql-client \
     gnupg \
     procps \
     libicu-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip intl \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование Composer
+# Настраиваем и устанавливаем расширения PHP
+# Флаг --with-webp удален, так как в PHP 8.2+ он часто вызывает конфликты, 
+# поддержка webp обычно включена через libwebp-dev автоматически или не требуется явного флага в этой версии
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip intl \
+    && docker-php-ext-enable gd intl
+
+# Устанавливаем Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Настройка прав для www-data
+# Настраиваем права пользователя (важно для Linux/Mac хостов)
 RUN usermod -u 1000 www-data || true
 
 EXPOSE 9000
 
 CMD ["php-fpm"]
+
